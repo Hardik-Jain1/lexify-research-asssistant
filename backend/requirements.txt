@@ -1,0 +1,16 @@
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-JWT-Extended
+Flask-CORS
+psycopg2-binary
+pymysql 
+python-dotenv
+requests
+arxiv
+litellm
+qdrant-client
+PyMuPDF         
+ftfy
+langchain
+joblib
