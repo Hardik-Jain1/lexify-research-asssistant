@@ -1,0 +1,27 @@
+/* src/assets/main.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* You can add global custom styles here if needed */
+body {
+  @apply bg-gray-100 text-gray-800; /* Default background and text color */
+  font-family: 'Inter', sans-serif; /* Apply Inter font globally */
+}
+
+/* Example: Custom scrollbar (optional, for modern look) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* tailwind gray-300 */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* tailwind gray-400 */
+}
