@@ -63,10 +63,13 @@ export interface PaperStatusResponse {
 // --- RAG Chat System Types ---
 
 export interface ChatMessage {
+  id?: number; // Optional if not always present on client-side creation
+  session_id?: number;
   role: 'user' | 'assistant';
   content: string;
-  timestamp?: string; // Optional, might be added by backend or frontend
-  sources?: Record<string, { title: string; text: string; _chunks?: any[] }>; // For assistant messages
+  timestamp: string; // ISO date string
+  sources?: Record<string, ChatMessageSource> | null; // Or Source[] if it's an array
+  // any other fields your ChatMessage might have
 }
 
 export interface ChatSession {
@@ -101,5 +104,30 @@ export interface ChatSessionMessagesResponse {
   session_id: number;
   session_name: string;
   associated_paper_titles: string[];
+  messages: ChatMessage[];
+}
+
+export interface ChatSessionInfo {
+  id: number;
+  session_name: string | null;
+  created_at: string; 
+  updated_at: string; 
+  paper_ids_in_session: number[]; 
+  paper_titles_in_session: string[]; // Added based on updated API
+  // Optional summaries if you decide to add them to the API later
+  first_user_message_summary?: string | null; 
+  last_message_summary?: string | null; 
+}
+
+export interface ChatMessageSource { // If not already defined
+  title?: string;
+  text: string;
+  // any other relevant fields for a source
+}
+
+export interface FullChatSession { // For /sessions/<id>/messages
+  session_id: number;
+  session_name: string | null;
+  associated_paper_titles: string[]; // From API
   messages: ChatMessage[];
 }

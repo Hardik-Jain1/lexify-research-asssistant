@@ -3,7 +3,7 @@
     <div class="container mx-auto px-6 py-3">
       <div class="flex items-center justify-between">
         <router-link to="/" class="text-xl font-semibold hover:text-gray-300">
-          AI Research Assistant
+          Lexify: AI Research Assistant
         </router-link>
 
         <div class="flex items-center space-x-4">

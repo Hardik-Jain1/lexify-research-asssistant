@@ -2,39 +2,39 @@ import { createRouter, createWebHistory } from 'vue-router';
 // 👇 Only import RouteRecordRaw as a type
 import type { RouteRecordRaw } from 'vue-router';// We will create these view components shortly
 // import HomeView from '../views/HomeView.vue';
-// import LoginView from '../views/LoginView.vue';
-// import RegisterView from '../views/RegisterView.vue';
-// import ResearchView from '../views/ResearchView.vue';
-// import ChatHistoryView from '../views/ChatHistoryView.vue';
+import LoginView from '../views/LoginView.vue';
+import RegisterView from '../views/RegisterView.vue';
+import ResearchView from '../views/ResearchView.vue';
+import ChatHistoryView from '../views/ChatHistoryView.vue';
 import { useAuthStore } from '@/store/authStore'; // For route guards
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
     name: 'Research',
-    // component: ResearchView, // We'll create this
-    component: () => import('../views/ResearchView.vue'), // Lazy load
+    component: ResearchView, // We'll create this
+    // component: () => import('../views/ResearchView.vue'), // Lazy load
     meta: { requiresAuth: true },
   },
   {
     path: '/login',
     name: 'Login',
-    // component: LoginView,
-    component: () => import('../views/LoginView.vue'), // Lazy load
+    component: LoginView,
+    // component: () => import('../views/LoginView.vue'), // Lazy load
     meta: { guestOnly: true },
   },
   {
     path: '/register',
     name: 'Register',
-    // component: RegisterView,
-    component: () => import('../views/RegisterView.vue'), // Lazy load
+    component: RegisterView,
+    // component: () => import('../views/RegisterView.vue'), // Lazy load
     meta: { guestOnly: true },
   },
   {
     path: '/chat-history',
     name: 'ChatHistory',
-    // component: ChatHistoryView,
-    component: () => import('../views/ChatHistoryView.vue'), // Lazy load
+    component: ChatHistoryView,
+    // component: () => import('../views/ChatHistoryView.vue'), // Lazy load
     meta: { requiresAuth: true },
   },
   // Example of a simple home/landing page if needed, otherwise Research can be home

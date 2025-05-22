@@ -240,7 +240,8 @@ def list_chat_sessions():
         "session_name": session.session_name,
         "created_at": session.created_at.isoformat(),
         "updated_at": session.updated_at.isoformat(),
-        "paper_ids_in_session": [p.id for p in session.papers_in_session] # DB IDs
+        "paper_ids_in_session": [p.id for p in session.papers_in_session],
+        "paper_titles_in_session": [p.title for p in session.papers_in_session] # Add this
     } for session in sessions]), 200
 
 
