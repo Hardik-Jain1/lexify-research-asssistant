@@ -65,17 +65,19 @@
     </div>
 
     <div v-if="isChatting" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div class="bg-transparent w-full max-w-3xl h-[calc(100vh-4rem)] flex flex-col">
+        <div class="bg-transparent w-full max-w-3xl h-[calc(100vh-4rem)] flex flex-col overflow-hidden rounded-lg">
             <ChatInterface
               :selected-paper-ids="Array.from(selectedPapersForChat)"
               :papers-in-context="processedPapers"
               @session-updated="handleSessionUpdated"
               @chat-closed="isChatting = false" 
-              class="flex-grow"
+              class="flex-grow min-h-0"
             />
-            <button @click="closeChatAndClearSession" class="mt-3 w-full sm:w-auto mx-auto px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition duration-150 ease-in-out">
-                Close Chat
-            </button>
+            <div class="flex-shrink-0 p-3 bg-white border-t border-gray-200 rounded-b-lg">
+              <button @click="closeChatAndClearSession" class="w-full sm:w-auto block mx-auto px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition duration-150 ease-in-out">
+                  Close Chat
+              </button>
+            </div>
         </div>
     </div>
 

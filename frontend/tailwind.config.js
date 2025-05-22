@@ -14,6 +14,7 @@ export default {
     },
   },
   plugins: [
+    require('@tailwindcss/typography'),
     require('@tailwindcss/forms'), // Optional: For better default form styling
     // require('daisyui'), // Optional: If you want to use DaisyUI components
   ],
