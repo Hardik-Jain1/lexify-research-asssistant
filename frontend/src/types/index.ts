@@ -59,3 +59,47 @@ export interface PaperStatusResponse {
   is_ready_for_chat: boolean;
   processing_status_notes?: string | null; // e.g., "arXiv", "arXiv (Download Failed)"
 }
+
+// --- RAG Chat System Types ---
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string; // Optional, might be added by backend or frontend
+  sources?: Record<string, { title: string; text: string; _chunks?: any[] }>; // For assistant messages
+}
+
+export interface ChatSession {
+  id: number;
+  session_name: string; // Or a generated name like "Chat about Paper A..."
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  // Potentially include associated paper IDs or titles if the API provides them directly
+  associated_paper_titles?: string[]; 
+}
+
+export interface ChatRequestBody {
+  query: string;
+  selected_paper_ids: number[]; // db_ids of processed papers
+  chat_session_id?: number | null;
+}
+
+export interface ChatResponse {
+  chat_session_id: number;
+  response: string; // The LLM's answer
+  sources: Record<string, { title: string; text: string; _chunks?: any[] }>; // Context from papers
+  token_usage?: { // Optional, if your backend provides it
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+  };
+  // Any other relevant data from the backend chat response
+}
+
+export interface ChatSessionMessagesResponse {
+  session_id: number;
+  session_name: string;
+  associated_paper_titles: string[];
+  messages: ChatMessage[];
+}

@@ -64,15 +64,18 @@
       Enter a query above and click "Search Papers" to begin.
     </div>
 
-    <div v-if="isChatting" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl h-[80vh] flex flex-col">
-            <h3 class="text-xl font-semibold mb-4">Chatting with Selected Papers</h3>
-            <div class="flex-grow overflow-y-auto mb-4 border p-2 rounded-md">
-                <!-- ChatInterface.vue will go here -->
-                Chat messages placeholder...
-            </div>
-            <input type="text" placeholder="Ask a question..." class="w-full p-2 border rounded-md">
-            <button @click="isChatting = false" class="mt-4 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">Close Chat</button>
+    <div v-if="isChatting" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-transparent w-full max-w-3xl h-[calc(100vh-4rem)] flex flex-col">
+            <ChatInterface
+              :selected-paper-ids="Array.from(selectedPapersForChat)"
+              :papers-in-context="processedPapers"
+              @session-updated="handleSessionUpdated"
+              @chat-closed="isChatting = false" 
+              class="flex-grow"
+            />
+            <button @click="closeChatAndClearSession" class="mt-3 w-full sm:w-auto mx-auto px-6 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition duration-150 ease-in-out">
+                Close Chat
+            </button>
         </div>
     </div>
 
@@ -80,10 +83,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount, watch } from 'vue';
+import { ref, onBeforeUnmount, watch, computed } from 'vue';
 import * as paperService from '@/services/paperService';
-import type { Paper, PaperSearchResponse, PaperStatusResponse } from '@/types';
+import type { Paper, PaperSearchResponse, PaperStatusResponse, ChatMessage } from '@/types';
 import PaperList from '@/components/paper/PaperList.vue';
+import ChatInterface from '@/components/chat/ChatInterface.vue';
 
 const searchQuery = ref('');
 const isLoadingSearch = ref(false);
@@ -99,6 +103,8 @@ const pollingIntervals = ref<Map<number, ReturnType<typeof setInterval>>>(new Ma
 
 const POLLING_INTERVAL_MS = 7000; 
 const MAX_POLLING_ATTEMPTS_BEFORE_RETRY = 5; 
+
+const currentChatSessionIdForView = ref<number | null>(null);
 
 const clearAllPollingIntervals = () => {
   pollingIntervals.value.forEach(intervalId => clearInterval(intervalId));
@@ -129,7 +135,6 @@ const fetchAndUpdatePaperStatus = async (paperDbId: number) => {
       } else {
         paperToUpdate.pollingAttempts = (paperToUpdate.pollingAttempts || 0) + 1;
 
-        // Set status message based on current state
         if (statusResponse.processing_status_notes && statusResponse.processing_status_notes !== 'arXiv' && statusResponse.processing_status_notes.match(/Failed|Error/i)) {
           paperToUpdate.processing_status_message = statusResponse.processing_status_notes;
         } else if (paperToUpdate.retryInitiated && !paperToUpdate.processing_status_message?.startsWith('Retry failed:')) {
@@ -137,9 +142,7 @@ const fetchAndUpdatePaperStatus = async (paperDbId: number) => {
         } else if (!paperToUpdate.retryInitiated) { 
           paperToUpdate.processing_status_message = 'Processing...';
         }
-        // If already "Retry failed:", keep that message unless a new status comes.
 
-        // Retry logic
         if (paperToUpdate.pollingAttempts >= MAX_POLLING_ATTEMPTS_BEFORE_RETRY && 
             !paperToUpdate.retryInitiated && 
             paperToUpdate.is_polling_status) {
@@ -151,13 +154,10 @@ const fetchAndUpdatePaperStatus = async (paperDbId: number) => {
           try {
             await paperService.retryProcessPaper(paperDbId);
             console.log(`Manual processing re-initiated for paper ${paperDbId}.`);
-            paperToUpdate.pollingAttempts = 0; // Reset attempts for the new processing cycle
+            paperToUpdate.pollingAttempts = 0;
           } catch (retryError: any) {
             console.error(`Failed to trigger retry for paper ${paperDbId}:`, retryError);
             paperToUpdate.processing_status_message = `Retry failed: ${retryError.response?.data?.msg || retryError.message || 'Unknown error'}`;
-            // Keep retryInitiated = true to prevent immediate auto-retries by this logic block.
-            // Polling continues, and if the backend resolves it, status will update.
-            // If backend fails again, processing_status_notes might show a new error.
           }
         }
       }
@@ -172,7 +172,6 @@ const fetchAndUpdatePaperStatus = async (paperDbId: number) => {
     console.error(`Failed to get status for paper ${paperDbId}:`, error);
     const paperToUpdate = processedPapers.value.find(p => p.db_id === paperDbId);
     if (paperToUpdate) {
-      // Avoid overwriting a more specific "Retry failed:" message with a generic "Error fetching status"
       if (!paperToUpdate.processing_status_message?.startsWith('Retry failed:')) {
         paperToUpdate.processing_status_message = `Error fetching status: ${error.response?.data?.msg || error.message || 'Unknown error'}`;
       }
@@ -218,7 +217,10 @@ const handleSearch = async () => {
   clearAllPollingIntervals(); 
   processedPapers.value = [];
   selectedPapersForChat.value.clear();
-  isChatting.value = false;
+  
+  // When a new search happens, we should probably reset any ongoing chat session ID
+  currentChatSessionIdForView.value = null; 
+  isChatting.value = false; // Close chat window on new search
 
   try {
     const response = await paperService.searchPapers(searchQuery.value);
@@ -267,12 +269,30 @@ const startChatting = () => {
       alert('Some selected papers are not yet ready for chat. Please wait for processing to complete or unselect them.');
       return;
     }
+    // When starting a new chat, if the selected papers change, we might want to reset the session ID.
+    // For now, we'll let ChatInterface handle its session or start a new one.
+    // If we wanted to be more explicit, we could reset currentChatSessionIdForView.value = null here
+    // if the set of selected papers has changed since the last chat.
     console.log('Start chatting with papers:', Array.from(selectedPapersForChat.value));
     isChatting.value = true;
   } else {
     alert('Please select at least one paper that is ready for chat.');
   }
 };
+
+const handleSessionUpdated = (newSessionId: number) => {
+  currentChatSessionIdForView.value = newSessionId;
+  console.log('Chat session updated in ResearchView, new ID:', newSessionId);
+};
+
+const closeChatAndClearSession = () => {
+  isChatting.value = false;
+  // Optionally, you might want to clear the currentChatSessionIdForView if closing means "ending" the session.
+  // currentChatSessionIdForView.value = null; 
+  // This depends on whether closing the modal should forget the session or allow resuming later.
+  // For now, just closing the modal.
+};
+
 
 watch(selectedPapersForChat, (newSelection) => {
   // console.log('Selected papers changed:', newSelection);
