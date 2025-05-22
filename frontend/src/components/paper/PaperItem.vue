@@ -74,18 +74,15 @@ const props = defineProps<{
   paper: Paper;
 }>();
 
-const emit = defineEmits(['updatePaperSelection']); // Changed emit name for clarity
+const emit = defineEmits(['update-paper-selection']); // Changed from updatePaperSelection
 
 const localIsSelected = ref(props.paper.is_selected_for_chat || false);
 
 watch(() => props.paper.is_selected_for_chat, (newValue) => {
-  // This watch ensures the checkbox reflects changes if the prop is updated from parent
   localIsSelected.value = newValue || false;
 });
 
 const toggleSelection = () => {
-  // When the checkbox is clicked, its v-model (localIsSelected) updates.
-  // Then, we emit this change to the parent.
-  emit('updatePaperSelection', { paperId: props.paper.db_id, selected: localIsSelected.value });
+  emit('update-paper-selection', { paperId: props.paper.db_id, selected: localIsSelected.value }); // Changed emit name
 };
 </script>

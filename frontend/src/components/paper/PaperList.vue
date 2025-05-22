@@ -11,13 +11,13 @@
       v-for="paper in papers"
       :key="paper.db_id"
       :paper="paper"
-      @update:selectedPapers="handlePaperSelectionUpdate" 
+      @update-paper-selection="handlePaperSelectionUpdate" 
     />
     </div>
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
+import { defineProps, defineEmits } from 'vue'; // Added defineEmits
 import PaperItem from './PaperItem.vue';
 import type { Paper } from '@/types';
 
@@ -25,12 +25,10 @@ const props = defineProps<{
   papers: Paper[];
 }>();
 
-// This component currently just displays. Selection state will be managed higher up.
+const emit = defineEmits(['update-paper-selection']); // Define the emit
+
 const handlePaperSelectionUpdate = (payload: { paperId: number, selected: boolean }) => {
-  // This is a placeholder. The actual logic for managing a list of selected paper IDs
-  // will live in ResearchView.vue or a dedicated Pinia store.
-  // PaperList.vue might not need to handle this event directly if ResearchView.vue
-  // passes down a method to PaperItem.vue or manages selected state through props.
-  console.log('Paper selection update in PaperList:', payload);
+  // console.log('Paper selection update in PaperList, re-emitting:', payload); // For debugging
+  emit('update-paper-selection', payload); // Re-emit to ResearchView
 };
 </script>

@@ -78,10 +78,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeUnmount } from 'vue'; // Added onBeforeUnmount
 import * as paperService from '@/services/paperService';
 import type { Paper, PaperSearchResponse } from '@/types';
-import PaperList from '@/components/paper/PaperList.vue'; // Import PaperList
+import PaperList from '@/components/paper/PaperList.vue';
 
 const searchQuery = ref('');
 const isLoadingSearch = ref(false);
@@ -89,12 +89,88 @@ const searchError = ref<string | null>(null);
 const searchResults = ref<PaperSearchResponse | null>(null);
 const searchQuerySubmitted = ref(false);
 
-// Store papers with their potentially updated frontend state (like processing_status_message)
 const processedPapers = ref<Paper[]>([]);
-const selectedPapersForChat = ref<Set<number>>(new Set()); // Store db_ids of selected papers
+const selectedPapersForChat = ref<Set<number>>(new Set());
 
-// For chat modal (placeholder)
 const isChatting = ref(false);
+
+const pollingIntervals = ref<Map<number, ReturnType<typeof setInterval>>>(new Map());
+
+const clearAllPollingIntervals = () => {
+  pollingIntervals.value.forEach(intervalId => clearInterval(intervalId));
+  pollingIntervals.value.clear();
+};
+
+onBeforeUnmount(() => {
+  clearAllPollingIntervals();
+});
+
+const fetchAndUpdatePaperStatus = async (paperDbId: number) => {
+  try {
+    const statusResponse = await paperService.getPaperStatus(paperDbId);
+    const paperToUpdate = processedPapers.value.find(p => p.db_id === paperDbId);
+
+    if (paperToUpdate) {
+      paperToUpdate.is_processed_for_chat = statusResponse.is_ready_for_chat;
+      paperToUpdate.processing_status_message = statusResponse.is_ready_for_chat
+        ? 'Ready for Chat'
+        : statusResponse.processing_status_notes || 'Processing...';
+
+      if (statusResponse.is_ready_for_chat) {
+        paperToUpdate.is_polling_status = false;
+        const intervalId = pollingIntervals.value.get(paperDbId);
+        if (intervalId) {
+          clearInterval(intervalId);
+          pollingIntervals.value.delete(paperDbId);
+        }
+      }
+    } else {
+      // Paper not found in current list, maybe it was removed or list was cleared
+      const intervalId = pollingIntervals.value.get(paperDbId);
+      if (intervalId) {
+        clearInterval(intervalId);
+        pollingIntervals.value.delete(paperDbId);
+      }
+    }
+  } catch (error: any) {
+    console.error(`Failed to get status for paper ${paperDbId}:`, error);
+    const paperToUpdate = processedPapers.value.find(p => p.db_id === paperDbId);
+    if (paperToUpdate) {
+      paperToUpdate.processing_status_message = `Error fetching status: ${error.message || 'Unknown error'}`;
+      // Optionally stop polling on persistent errors
+      // paperToUpdate.is_polling_status = false;
+      // const intervalId = pollingIntervals.value.get(paperDbId);
+      // if (intervalId) {
+      //   clearInterval(intervalId);
+      //   pollingIntervals.value.delete(paperDbId);
+      // }
+    }
+  }
+};
+
+const pollPaperStatus = (paperDbId: number) => {
+  if (pollingIntervals.value.has(paperDbId)) {
+    return; // Already polling this paper
+  }
+
+  // Initial fetch
+  fetchAndUpdatePaperStatus(paperDbId).then(() => {
+    // After initial fetch, check if polling is still needed
+    const paper = processedPapers.value.find(p => p.db_id === paperDbId);
+    if (paper && paper.is_polling_status && !paper.is_processed_for_chat) {
+      const intervalId = setInterval(() => fetchAndUpdatePaperStatus(paperDbId), 5000); // Poll every 5 seconds
+      pollingIntervals.value.set(paperDbId, intervalId);
+    }
+  });
+};
+
+const startPollingForUnprocessedPapers = () => {
+  processedPapers.value.forEach(paper => {
+    if (paper.is_polling_status && !paper.is_processed_for_chat) {
+      pollPaperStatus(paper.db_id);
+    }
+  });
+};
 
 const handleSearch = async () => {
   if (!searchQuery.value.trim()) {
@@ -104,6 +180,8 @@ const handleSearch = async () => {
   isLoadingSearch.value = true;
   searchError.value = null;
   searchResults.value = null;
+  
+  clearAllPollingIntervals(); // Clear existing polling intervals
   processedPapers.value = [];
   selectedPapersForChat.value.clear();
   searchQuerySubmitted.value = true;
@@ -111,14 +189,13 @@ const handleSearch = async () => {
   try {
     const response = await paperService.searchPapers(searchQuery.value);
     searchResults.value = response;
-    // Initialize processedPapers with data from backend
-    // We'll add polling logic in the next step to update these further
     processedPapers.value = response.papers.map(p => ({
       ...p,
-      processing_status_message: p.is_processed_for_chat ? 'Ready for Chat' : 'Processing...',
+      processing_status_message: p.is_processed_for_chat ? 'Ready for Chat' : (p.individual_summary ? 'Processing for chat...' : 'Fetching details & processing...'),
       is_polling_status: !p.is_processed_for_chat,
-      is_selected_for_chat: false, // Initially not selected
+      is_selected_for_chat: false,
     }));
+    startPollingForUnprocessedPapers(); // Start polling for newly fetched papers
   } catch (error: any) {
     console.error('Search failed:', error);
     searchError.value = error.response?.data?.msg || error.message || 'Failed to fetch papers. Please try again.';
@@ -132,7 +209,7 @@ const handleSearch = async () => {
 const updateSelectedPapers = (payload: { paperId: number, selected: boolean }) => {
   const paper = processedPapers.value.find(p => p.db_id === payload.paperId);
   if (paper) {
-    paper.is_selected_for_chat = payload.selected; // Update the paper's selected state
+    paper.is_selected_for_chat = payload.selected;
     if (payload.selected) {
       selectedPapersForChat.value.add(payload.paperId);
     } else {
@@ -141,11 +218,10 @@ const updateSelectedPapers = (payload: { paperId: number, selected: boolean }) =
   }
 };
 
-// Placeholder for starting chat
 const startChatting = () => {
   if (selectedPapersForChat.value.size > 0) {
     console.log('Start chatting with papers:', Array.from(selectedPapersForChat.value));
-    isChatting.value = true; // Show chat modal (placeholder)
+    isChatting.value = true;
   } else {
     alert('Please select at least one paper to chat with.');
   }
