@@ -11,3 +11,8 @@ export const getPaperStatus = async (paperDbId: number): Promise<PaperStatusResp
   const response = await apiClient.get<PaperStatusResponse>(`/papers/${paperDbId}/status`);
   return response.data;
 };
+
+export const retryProcessPaper = async (paperDbId: number): Promise<{ msg: string }> => {
+  const response = await apiClient.post<{ msg: string }>(`/papers/${paperDbId}/process-manual`);
+  return response.data;
+};

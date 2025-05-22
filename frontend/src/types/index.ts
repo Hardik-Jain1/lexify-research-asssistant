@@ -19,20 +19,23 @@ export interface User {
 // New Types for Papers:
 export interface Paper {
   db_id: number;
-  paper_id: string; // ArXiv ID
+  paper_id: string; // This is the arXiv ID
   title: string;
   authors: string[];
-  published: string; // Date string
+  abstract?: string;
+  published: string; // Keep as string for simplicity from API
   pdf_url: string;
-  abstract: string | null;
-  individual_summary: string | null;
-  source: string;
+  individual_summary?: string;
+  source?: string;
   is_processed_for_chat: boolean;
-  qdrant_collection_name: string | null;
-  // For frontend state management, we might add more fields like:
-  processing_status_message?: string; // e.g., "Downloading...", "Indexing..."
+  qdrant_collection_name?: string | null;
+  
+  // Frontend-specific state for UI and polling
+  processing_status_message?: string;
   is_polling_status?: boolean;
-  is_selected_for_chat?: boolean;
+  is_selected_for_chat?: boolean; // Used for checkbox state in UI
+  pollingAttempts?: number;      // New: Tracks polling attempts
+  retryInitiated?: boolean;      // New: Tracks if a retry has been triggered
 }
 
 export interface PaperSearchResponse {
@@ -48,11 +51,11 @@ export interface PaperStatusResponse {
   paper_id: string;
   db_id: number;
   title: string;
-  downloaded_at: string | null;
-  text_extracted_at: string | null;
-  cleaned_text_at: string | null;
-  indexed_at: string | null;
-  qdrant_collection_name: string | null;
+  downloaded_at?: string | null;
+  text_extracted_at?: string | null;
+  cleaned_text_at?: string | null;
+  indexed_at?: string | null;
+  qdrant_collection_name?: string | null;
   is_ready_for_chat: boolean;
-  processing_status_notes: string | null;
+  processing_status_notes?: string | null; // e.g., "arXiv", "arXiv (Download Failed)"
 }
