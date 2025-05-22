@@ -1,29 +1,10 @@
 // src/store/authStore.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-// We will create authService later
-// import * as authService from '@/services/authService';
-import type { UserCredentials, UserRegistrationData, User } from '@/types'; // We'll define these types
+import * as authService from '@/services/authService'; // Import the actual authService
+import type { UserCredentials, UserRegistrationData, User } from '@/types';
 import router from '@/router';
-
-// Placeholder for API service functions - will be replaced by actual service calls
-const mockAuthService = {
-  login: async (credentials: UserCredentials) => {
-    console.log('Mock login with:', credentials);
-    if (credentials.username_or_email === 'user' && credentials.password === 'pass') {
-      return { access_token: 'mock_jwt_token', user_id: 1, username: 'Test User' };
-    }
-    throw new Error('Invalid mock credentials');
-  },
-  register: async (data: UserRegistrationData) => {
-    console.log('Mock register with:', data);
-    return { msg: 'Mock user created', user_id: 2 };
-  },
-  logout: async () => {
-    console.log('Mock logout');
-    return { msg: 'Mock logout successful' };
-  }
-};
+import apiClient from '@/services/api'; // Import apiClient to set/clear auth headers
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('authToken'));
@@ -38,6 +19,8 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser.value = userData;
     localStorage.setItem('authToken', newToken);
     localStorage.setItem('authUser', JSON.stringify(userData));
+    // Set Axios default header
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     error.value = null;
   }
 
@@ -46,23 +29,28 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser.value = null;
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
-    // Also clear Axios default auth header if set by an interceptor
+    // Remove Axios default header
+    delete apiClient.defaults.headers.common['Authorization'];
   }
 
   async function login(credentials: UserCredentials) {
     isLoading.value = true;
     error.value = null;
     try {
-      // Replace with actual service call: const response = await authService.login(credentials);
-      const response = await mockAuthService.login(credentials);
-      setAuthData(response.access_token, { id: response.user_id, username: response.username, email: credentials.username_or_email }); // Assuming email is part of user, adjust as needed
-      // Setup Axios default header here or in an interceptor
-      // axios.defaults.headers.common['Authorization'] = `Bearer ${response.access_token}`;
-      router.push( (router.currentRoute.value.query.redirect as string) || '/');
+      const response = await authService.login(credentials); // Use actual service
+      // Assuming backend returns email if username was used for login, or we fetch it
+      // For now, using what backend login endpoint returns
+      const userData: User = { id: response.user_id, username: response.username };
+      setAuthData(response.access_token, userData);
+      
+      // Redirect to the intended page or home
+      const redirectPath = router.currentRoute.value.query.redirect as string || '/';
+      router.push(redirectPath);
+
     } catch (e: any) {
-      clearAuthData();
-      error.value = e.message || 'Failed to login.';
-      throw e; // Re-throw to be caught by component if needed
+      clearAuthData(); // Ensure auth data is cleared on login failure
+      error.value = e.response?.data?.msg || e.message || 'Failed to login.';
+      throw e; 
     } finally {
       isLoading.value = false;
     }
@@ -72,12 +60,13 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      // Replace with actual service call: await authService.register(data);
-      await mockAuthService.register(data);
-      // Optionally auto-login or redirect to login page
-      router.push('/login');
+      await authService.register(data); // Use actual service
+      // After successful registration, you might want to:
+      // 1. Show a success message and redirect to login
+      // 2. Or automatically log the user in (would require another API call or different backend response)
+      router.push({ name: 'Login', query: { registered: 'true' } }); // Example redirect with a query param
     } catch (e: any) {
-      error.value = e.message || 'Failed to register.';
+      error.value = e.response?.data?.msg || e.message || 'Failed to register.';
       throw e;
     } finally {
       isLoading.value = false;
@@ -85,39 +74,53 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    isLoading.value = true;
+    // No need to set isLoading for logout unless the API call is very slow
+    // or you want to provide UI feedback during the API call.
+    // isLoading.value = true;
     error.value = null;
     try {
-      // Replace with actual service call: await authService.logout();
-      await mockAuthService.logout(); // Call backend even if it's simple
+      if (token.value) { // Only call backend logout if there's a token
+        await authService.logout();
+      }
     } catch (e: any) {
-      // Log error, but proceed with client-side logout
-      console.error('Logout API call failed:', e);
+      console.error('Logout API call failed (token might already be invalid or server issue):', e);
+      // Still proceed with client-side cleanup even if API call fails
     } finally {
       clearAuthData();
-      // Remove Axios default header
-      // delete axios.defaults.headers.common['Authorization'];
-      isLoading.value = false;
+      // isLoading.value = false;
       router.push('/login');
     }
   }
-
+  
+  // Attempt to rehydrate auth state from localStorage and set Axios header
   function initializeAuth() {
     const storedToken = localStorage.getItem('authToken');
     const storedUser = localStorage.getItem('authUser');
+
     if (storedToken && storedUser) {
-      token.value = storedToken;
-      currentUser.value = JSON.parse(storedUser);
-      // Setup Axios default header here too if token exists on load
-      // axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        // Basic validation of stored user data
+        if (parsedUser && typeof parsedUser.id === 'number' && typeof parsedUser.username === 'string') {
+          token.value = storedToken;
+          currentUser.value = parsedUser;
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        } else {
+          // Stored user data is invalid, clear everything
+          clearAuthData();
+        }
+      } catch (e) {
+        // Error parsing stored user, clear everything
+        console.error("Error parsing stored user data:", e);
+        clearAuthData();
+      }
     } else {
-      clearAuthData(); // Ensure clean state if partial data exists
+      // No token or user in localStorage, ensure clean state
+      clearAuthData();
     }
   }
-
-  // Call initializeAuth when the store is created to load persisted state
-  initializeAuth();
-
+  
+  initializeAuth(); // Initialize on store creation
 
   return {
     token,
@@ -128,8 +131,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     logout,
-    initializeAuth, // expose if needed externally, but called internally too
-    setAuthData, // for direct setting if needed (e.g. social login)
+    initializeAuth,
+    setAuthData,
     clearAuthData,
   };
 });
