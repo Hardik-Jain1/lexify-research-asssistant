@@ -1,93 +1,171 @@
 <template>
-    <div class="flex flex-col h-full bg-white shadow-xl rounded-lg border border-gray-200">
-        <header class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-            <h2 class="text-lg font-semibold text-gray-700">
-                Chat with Selected Papers ({{ selectedPaperIds.length }} paper<span v-if="selectedPaperIds.length !== 1">s</span>)
-            </h2>
-            <p v-if="selectedPaperTitles.length" class="text-xs text-gray-500 truncate">
-                Papers: {{ selectedPaperTitles.join(', ') }}
-            </p>
+    <div class="flex flex-col h-full bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl border border-slate-200/60 overflow-hidden">
+        <!-- Header with Gradient -->
+        <header class="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 p-6">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-3 h-3 bg-emerald-400 rounded-full shadow-lg shadow-emerald-200"></div>
+                        <h2 class="text-xl font-bold text-white">
+                            Research Chat
+                        </h2>
+                    </div>
+                    <div class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                        <span class="text-white text-sm font-medium">
+                            {{ selectedPaperIds.length }} paper{{ selectedPaperIds.length !== 1 ? 's' : '' }}
+                        </span>
+                    </div>
+                </div>
+                <p v-if="selectedPaperTitles.length" class="text-white/80 text-sm mt-2 truncate">
+                    {{ selectedPaperTitles.join(' • ') }}
+                </p>
+            </div>
         </header>
 
-        <div ref="messageContainer" class="flex-grow p-4 space-y-4 overflow-y-auto bg-gray-100">
-            <div v-if="!messages.length" class="text-center text-gray-500 pt-10">
-                <p>Ask a question about the selected papers to start the conversation.</p>
+        <!-- Messages Area -->
+        <div ref="messageContainer" class="flex-grow p-6 space-y-6 overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 custom-scrollbar">
+            <!-- Empty State -->
+            <div v-if="!messages.length" class="flex flex-col items-center justify-center h-full text-center py-12">
+                <div class="relative mb-6">
+                    <div class="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-full blur-3xl transform scale-150"></div>
+                    <div class="relative bg-gradient-to-br from-indigo-100 to-purple-100 p-8 rounded-3xl shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-indigo-600 mx-auto">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                        </svg>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold text-slate-700 mb-2">Start Your Research Conversation</h3>
+                <p class="text-slate-500 max-w-md">Ask questions about your selected papers to uncover insights, compare findings, or explore connections between research.</p>
             </div>
+
+            <!-- Messages -->
             <div v-for="(message, index) in messages" :key="index" :class="messageBubbleClass(message.role)">
                 <div :class="messageContentClass(message.role)">
-                    <!-- Use v-html for assistant messages after sanitizing/parsing Markdown -->
-                    <div v-if="message.role === 'assistant'" class="prose prose-sm max-w-none" v-html="renderMarkdown(message.content)"></div>
-                    <p v-else class="text-sm whitespace-pre-line">{{ message.content }}</p>
+                    <!-- Message Content -->
+                    <div v-if="message.role === 'assistant'" class="prose prose-sm max-w-none prose-slate" v-html="renderMarkdown(message.content)"></div>
+                    <p v-else class="text-sm whitespace-pre-line leading-relaxed">{{ message.content }}</p>
                     
-                    <div v-if="message.role === 'assistant' && message.sources && Object.keys(message.sources).length > 0" class="mt-3 pt-2 border-t border-gray-300/50 text-xs text-gray-500">
-                        <strong class="text-gray-600 block mb-1">Sources:</strong>
-                        <ul class="space-y-1">
-                            <li v-for="(source, key) in message.sources" :key="key" 
-                                    class="truncate hover:whitespace-normal p-1 rounded hover:bg-gray-200/60 cursor-pointer"
-                                    :title="`Source: ${source.title || key}\nContext: ${source.text}`"
-                                    @click="handleSourceClick(source, key as string)">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3 inline-block mr-1 text-indigo-500">
-                                    <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V6.528a1.5 1.5 0 0 0-.44-1.06L9.53 2.439A1.5 1.5 0 0 0 8.472 2H3.5ZM8 6V3.5L12.5 8H9a1 1 0 0 1-1-1Z" />
-                                </svg>
-                                {{ source.title || key }}
-                            </li>
-                        </ul>
+                    <!-- Sources Section -->
+                    <div v-if="message.role === 'assistant' && message.sources && Object.keys(message.sources).length > 0" class="mt-4 pt-3 border-t border-slate-200/50">
+                        <div class="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-2 text-indigo-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 1 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                            </svg>
+                            <span class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Referenced Sources</span>
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="(source, key) in message.sources" :key="key"
+                                class="group p-3 rounded-lg bg-white/60 border border-slate-200/60 hover:bg-indigo-50/60 hover:border-indigo-200 cursor-pointer transition-all duration-200"
+                                :title="`Source: ${source.title || key}\nContext: ${source.text}`"
+                                @click="handleSourceClick(source, key as string)">
+                                <div class="flex items-start space-x-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 mt-0.5 text-indigo-500 group-hover:text-indigo-600 transition-colors">
+                                        <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V6.528a1.5 1.5 0 0 0-.44-1.06L9.53 2.439A1.5 1.5 0 0 0 8.472 2H3.5ZM8 6V3.5L12.5 8H9a1 1 0 0 1-1-1Z" />
+                                    </svg>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-slate-700 group-hover:text-indigo-700 truncate">
+                                            {{ source.title || key }}
+                                        </p>
+                                        <p class="text-xs text-slate-500 mt-1 line-clamp-2">
+                                            {{ source.text }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <p v-if="message.timestamp" class="text-xs text-gray-400 mt-1.5 text-right">{{ formatTimestamp(message.timestamp) }}</p>
+
+                    <!-- Timestamp -->
+                    <p v-if="message.timestamp" class="text-xs text-slate-400 mt-3 text-right opacity-60">
+                        {{ formatTimestamp(message.timestamp) }}
+                    </p>
                 </div>
             </div>
+
+            <!-- Typing Indicator -->
             <div v-if="isLoadingResponse" class="flex justify-start">
-                <div class="bg-gray-200 text-gray-700 p-3 rounded-lg max-w-xl animate-pulse">
-                    <p class="text-sm">Assistant is typing...</p>
+                <div class="bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-200/60 p-4 rounded-2xl max-w-xs shadow-sm">
+                    <div class="flex items-center space-x-2">
+                        <div class="flex space-x-1">
+                            <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                            <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                        </div>
+                        <span class="text-sm text-slate-600">AI is thinking...</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <footer class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-            <form @submit.prevent="sendMessage" class="flex items-center gap-3">
-                <input
-                    type="text"
-                    v-model="userInput"
-                    placeholder="Ask a question..."
-                    :disabled="isLoadingResponse"
-                    class="flex-grow w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                />
-                <button
-                    type="submit"
-                    :disabled="isLoadingResponse || !userInput.trim()"
-                    class="inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                    <svg v-if="isLoadingResponse" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Send
-                </button>
-            </form>
-            <p v-if="chatError" class="mt-2 text-xs text-red-600">{{ chatError }}</p>
+        <!-- Input Footer -->
+        <footer class="relative bg-white/80 backdrop-blur-sm border-t border-slate-200/60 p-6">
+            <div class="absolute inset-0 bg-gradient-to-r from-indigo-50/30 to-purple-50/30"></div>
+            <div class="relative">
+                <form @submit.prevent="sendMessage" class="flex items-end gap-3">
+                    <div class="flex-grow relative">
+                        <input
+                            type="text"
+                            v-model="userInput"
+                            placeholder="Ask about your research papers..."
+                            :disabled="isLoadingResponse"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 text-sm transition-all duration-200 bg-white/80 backdrop-blur-sm placeholder-slate-400"
+                        />
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                    <button
+                        type="submit"
+                        :disabled="isLoadingResponse || !userInput.trim()"
+                        class="group relative inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                        <svg v-if="isLoadingResponse" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-2 group-hover:translate-x-0.5 transition-transform">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                        </svg>
+                        {{ isLoadingResponse ? 'Sending...' : 'Send' }}
+                    </button>
+                </form>
+                
+                <!-- Error Message -->
+                <div v-if="chatError" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-red-500 mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                        </svg>
+                        <p class="text-sm text-red-700">{{ chatError }}</p>
+                    </div>
+                </div>
+            </div>
         </footer>
     </div>
 </template>
 
 <script setup lang="ts">
+// ... existing script setup ...
 import { ref, watch, nextTick, defineProps, defineEmits, onMounted, computed } from 'vue';
-import { marked } from 'marked'; // Import marked
-import DOMPurify from 'dompurify'; // For sanitizing HTML
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import * as ragService from '@/services/ragService';
-import type { ChatMessage, Paper, Source } from '@/types'; // Assuming Source type exists
+import type { ChatMessage, Paper, Source } from '@/types';
 
 console.log('ChatInterface: script setup started');
 
 const props = defineProps<{
     selectedPaperIds: number[];
     initialMessages?: ChatMessage[];
-    initialSessionId?: number | null;
+    initialSessionId?: number | null; // Changed from currentChatSessionId to initialSessionId
     papersInContext: Paper[];
+    //isVisible: boolean; // Assuming this might be used if it's a modal controlled by ResearchView
 }>();
 
 console.log('ChatInterface props received:', JSON.parse(JSON.stringify(props)));
 
-const emit = defineEmits(['session-updated', 'chat-closed', 'source-clicked']);
+const emit = defineEmits(['session-updated', 'chat-closed', 'source-clicked']); // chat-closed might be emitted to parent
 
 const messages = ref<ChatMessage[]>(props.initialMessages || []);
 const userInput = ref('');
@@ -118,33 +196,34 @@ const selectedPaperTitles = computed(() => {
 
 const renderMarkdown = (content: string) => {
   if (!content) return '';
-
-  // Handle multiple citations like [id1, id2, id3v1]
-  // This regex finds content within brackets, then we process the inner content.
   let linkedContent = content.replace(/\[(.*?)\]/g, (match, innerContent) => {
-    const ids = innerContent.split(',').map(id => id.trim()).filter(id => id); // Split by comma, trim, remove empty
-    if (ids.length === 0) return match; // If no valid IDs after split, return original match
+    const ids = innerContent.split(',').map(id => id.trim()).filter(id => id);
+    if (ids.length === 0) return match;
 
     const links = ids.map(paperId => {
-      // Validate paperId format if necessary, e.g., /^[A-Za-z0-9.-]+v?\d*$/
-      // For now, assuming IDs are valid characters for an attribute
-      const cleanPaperId = paperId.replace(/[^A-Za-z0-9.-v]/g, ''); // Basic sanitization for attribute
-      if (!cleanPaperId) return paperId; // if sanitization results in empty, return original part
-      return `<a href="#" data-paper-id="${cleanPaperId}" class="text-indigo-600 hover:underline font-medium">${paperId}</a>`;
+      const cleanPaperId = paperId.replace(/[^A-Za-z0-9.-v]/g, '');
+      if (!cleanPaperId) return paperId;
+      // Ensure prose link styles are applied by Tailwind Typography or custom styles
+      return `<a href="#" data-paper-id="${cleanPaperId}" class="font-medium">${paperId}</a>`;
     });
-
-    return `[${links.join(', ')}]`; // Reconstruct with links
+    return `[${links.join(', ')}]`;
   });
 
   const rawHtml = marked.parse(linkedContent) as string;
-  return DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['data-paper-id'] }); // Ensure data-paper-id is allowed
+  // Ensure data-paper-id is allowed and that links open in new tab if they are external
+  return DOMPurify.sanitize(rawHtml, {
+    ADD_ATTR: ['data-paper-id'],
+    ADD_TAGS: ['a'], // Ensure 'a' tags are allowed
+    FORBID_TAGS: [], // Customize if needed
+    FORBID_ATTR: [], // Customize if needed
+    USE_PROFILES: { html: true }, // Use a broad profile
+    ADD_URI_SAFE_ATTR: ['data-paper-id']
+  });
 };
 
 const handleSourceClick = (source: Source, key: string) => {
-        console.log('Source clicked:', source.title || key, source);
-        emit('source-clicked', { title: source.title || key, text: source.text, rawSource: source });
-        // Placeholder for actual display logic (e.g., modal, side panel)
-        // alert(`Source: ${source.title || key}\n\nContext:\n${source.text}`); 
+    console.log('Source clicked:', source.title || key, source);
+    emit('source-clicked', { title: source.title || key, text: source.text, rawSource: source });
 };
 
 const scrollToBottom = () => {
@@ -157,6 +236,20 @@ const scrollToBottom = () => {
 
 watch(messages, scrollToBottom, { deep: true });
 
+// Watch for prop changes to reset chat if session or selected papers change significantly
+watch(() => [props.initialSessionId, props.selectedPaperIds], ([newSessionId, newSelectedIds], [oldSessionId, oldSelectedIds]) => {
+    console.log('ChatInterface: Props changed - initialSessionId or selectedPaperIds');
+    // Basic check: if session ID changes, or if selected papers fundamentally change (e.g. from some to none, or all different)
+    // More sophisticated logic might be needed depending on desired behavior.
+    // For now, if initialSessionId changes, we reset.
+    if (newSessionId !== oldSessionId) {
+        console.log(`ChatInterface: Resetting due to session ID change. New: ${newSessionId}, Old: ${oldSessionId}`);
+        resetChat(newSessionId, []); // Reset with new session ID and clear messages
+    }
+    // Potentially add logic here if selectedPaperIds change and you want to start a new session or clear messages.
+}, { deep: true });
+
+
 const setupCitationClickListener = () => {
   if (messageContainer.value) {
     messageContainer.value.addEventListener('click', (event) => {
@@ -165,16 +258,33 @@ const setupCitationClickListener = () => {
         event.preventDefault();
         const paperId = target.getAttribute('data-paper-id');
         console.log('Inline citation clicked:', paperId);
-        // Emit an event or handle directly
-        // emit('citation-clicked', paperId);
-        alert(`Citation clicked: ${paperId}`); // Placeholder
+        // Placeholder for future: emit('citation-clicked', paperId);
+        alert(`Citation clicked: ${paperId}`);
       }
     });
   }
 };
 
-onMounted(() => {
-    console.log('ChatInterface: component mounted');
+onMounted(async () => {
+    console.log('ChatInterface: component mounted. Initial session ID:', props.initialSessionId);
+    if (props.initialSessionId) {
+        currentChatSessionId.value = props.initialSessionId;
+        // Fetch initial messages if a session ID is provided
+        isLoadingResponse.value = true;
+        try {
+            const existingMessages = await ragService.getChatSessionMessages(props.initialSessionId);
+            messages.value = existingMessages.messages; // Assuming the service returns { messages: ChatMessage[] }
+            emit('session-updated', props.initialSessionId); // Confirm session
+        } catch (error) {
+            console.error('Failed to load messages for session:', props.initialSessionId, error);
+            chatError.value = "Failed to load previous session messages.";
+        } finally {
+            isLoadingResponse.value = false;
+            scrollToBottom();
+        }
+    } else {
+        messages.value = []; // Start with no messages if no session ID
+    }
     scrollToBottom();
     setupCitationClickListener();
 });
@@ -189,7 +299,7 @@ const sendMessage = async () => {
     };
     messages.value.push(userMessage);
     const currentQuery = userInput.value;
-    userInput.value = ''; // Clear input
+    userInput.value = '';
     isLoadingResponse.value = true;
     chatError.value = null;
     scrollToBottom();
@@ -213,6 +323,10 @@ const sendMessage = async () => {
             currentChatSessionId.value = response.chat_session_id;
             emit('session-updated', currentChatSessionId.value);
         }
+         if (!currentChatSessionId.value && response.chat_session_id) { // First message in a new session
+            currentChatSessionId.value = response.chat_session_id;
+            emit('session-updated', currentChatSessionId.value);
+        }
     } catch (error: any) {
         console.error('Error getting chat response:', error);
         chatError.value = error.response?.data?.msg || error.message || 'Failed to get response from assistant.';
@@ -232,11 +346,11 @@ const messageBubbleClass = (role: 'user' | 'assistant') => {
 };
 
 const messageContentClass = (role: 'user' | 'assistant') => {
-    let baseClass = 'p-3 rounded-lg max-w-xl shadow-sm text-sm';
+    let baseClass = 'p-4 rounded-2xl max-w-2xl shadow-lg text-sm backdrop-blur-sm border';
     if (role === 'user') {
-        return `${baseClass} bg-indigo-500 text-white`;
+        return `${baseClass} bg-gradient-to-br from-indigo-600 to-purple-600 text-white border-indigo-500/30 shadow-indigo-200`;
     }
-    return `${baseClass} bg-gray-200 text-gray-800`;
+    return `${baseClass} bg-white/80 text-slate-800 border-slate-200/60`;
 };
 
 const formatTimestamp = (isoString?: string) => {
@@ -245,10 +359,12 @@ const formatTimestamp = (isoString?: string) => {
 };
 
 const resetChat = (newSessionId: number | null = null, newMessages: ChatMessage[] = []) => {
-    messages.value = [...newMessages];
+    console.log(`ChatInterface: resetChat called. New session ID: ${newSessionId}`);
+    messages.value = [...newMessages]; // Ensure reactivity by creating a new array
     currentChatSessionId.value = newSessionId;
     chatError.value = null;
-    isLoadingResponse.value = false;
+    isLoadingResponse.value = false; // Ensure loading state is reset
+    userInput.value = ''; // Clear user input
     scrollToBottom();
 };
 
@@ -257,7 +373,6 @@ defineExpose({ resetChat });
 </script>
 
 <style scoped>
-/* Ensure the chat interface takes up available height if parent constrains it */
 .h-full {
     height: 100%;
 }
@@ -270,21 +385,74 @@ defineExpose({ resetChat });
     white-space: normal;
 }
 
-/* Add styles for prose (Tailwind Typography plugin is helpful here if installed) */
-/* If not using Tailwind Typography, you'll need to style li, strong, a, etc. manually */
-.prose :where(ul):not(:where([class~="not-prose"] *)) {
-    list-style-type: disc;
-    padding-left: 1.5em; /* Adjust as needed */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
-.prose :where(strong):not(:where([class~="not-prose"] *)) {
-    font-weight: 600; /* Or theme.fontWeight.semibold */
+
+/* Custom Scrollbar for Webkit browsers */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
 }
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: theme('colors.slate.300');
+    border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.slate.400');
+}
+
+/* Enhanced Prose styles for Markdown content */
 .prose :where(a):not(:where([class~="not-prose"] *)) {
-    color: theme('colors.indigo.600');
-    text-decoration: none;
+  color: theme('colors.indigo.600');
+  text-decoration: none;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 .prose :where(a):not(:where([class~="not-prose"] *)):hover {
-    text-decoration: underline;
+  background-color: theme('colors.indigo.50');
+  text-decoration: underline;
+  color: theme('colors.indigo.700');
 }
-/* Add more prose styles as needed for p, blockquote, etc. */
+.prose :where(ul):not(:where([class~="not-prose"] *)) {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 1em 0;
+}
+.prose :where(ol):not(:where([class~="not-prose"] *)) {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 1em 0;
+}
+.prose :where(strong):not(:where([class~="not-prose"] *)) {
+  font-weight: 600;
+  color: theme('colors.slate.900');
+}
+.prose :where(p):not(:where([class~="not-prose"] *)) {
+  margin: 0.75em 0;
+  line-height: 1.6;
+}
+.prose :where(blockquote):not(:where([class~="not-prose"] *)) {
+  border-left: 4px solid theme('colors.indigo.300');
+  padding-left: 1em;
+  margin: 1em 0;
+  background-color: theme('colors.indigo.50');
+  border-radius: 0 8px 8px 0;
+  padding: 1em;
+}
+.prose :where(code):not(:where([class~="not-prose"] *)) {
+  background-color: theme('colors.slate.100');
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: theme('fontFamily.mono');
+  font-size: 0.875em;
+  font-weight: 500;
+}
 </style>
