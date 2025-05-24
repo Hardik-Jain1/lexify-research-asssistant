@@ -5,23 +5,21 @@
 
 /* You can add global custom styles here if needed */
 body {
-  @apply bg-gray-100 text-gray-800; /* Default background and text color */
-  font-family: 'Inter', sans-serif; /* Apply Inter font globally */
+  @apply bg-slate-50 text-slate-700 antialiased;
+  font-family: 'Inter', sans-serif; /* Ensure Inter is the default */
 }
 
-/* Example: Custom scrollbar (optional, for modern look) */
+/* Optional: Custom scrollbar styling for a more modern look (Webkit browsers) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
+  @apply bg-slate-100;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* tailwind gray-300 */
-  border-radius: 10px;
+  @apply bg-slate-300 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; /* tailwind gray-400 */
+  @apply bg-slate-400;
 }
