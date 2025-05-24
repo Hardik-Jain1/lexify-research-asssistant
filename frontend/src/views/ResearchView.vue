@@ -39,7 +39,21 @@
       <!-- Consolidated Summary Display -->
       <div v-if="searchResults.consolidated_summary" class="p-6 bg-indigo-50 rounded-lg shadow border border-indigo-200">
         <h2 class="text-xl font-semibold text-indigo-800 mb-3">Consolidated Summary</h2>
-        <p class="text-gray-700 leading-relaxed whitespace-pre-line">{{ searchResults.consolidated_summary }}</p>
+        <p class="text-gray-700 leading-relaxed whitespace-pre-line">{{ processedSummaryAndReferences.summaryText }}</p>
+        
+        <div v-if="processedSummaryAndReferences.references.length > 0" class="mt-6 pt-4 border-t border-indigo-200">
+          <h3 class="text-lg font-semibold text-indigo-700 mb-2">References:</h3>
+          <ul class="space-y-1 text-sm">
+            <li v-for="ref in processedSummaryAndReferences.references" :key="ref.index">
+              <span class="font-medium">{{ ref.index }}.</span>
+              <a href="#" @click.prevent="handleReferenceClick(ref.db_id)" 
+                 class="ml-1 text-indigo-600 hover:text-indigo-800 hover:underline"
+                 :title="`Go to paper: ${ref.title}`">
+                {{ ref.title }} (ID: {{ ref.source_id || ref.db_id }})
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
       
       <div class="p-6 bg-white shadow-lg rounded-lg">
@@ -116,6 +130,71 @@ const clearAllPollingIntervals = () => {
 onBeforeUnmount(() => {
   clearAllPollingIntervals();
 });
+
+const processedSummaryAndReferences = computed(() => {
+  if (!searchResults.value?.consolidated_summary) {
+    return { summaryText: '', references: [] };
+  }
+
+  const summary = searchResults.value.consolidated_summary;
+  const referencesMap = new Map<string, { index: number; title: string; db_id: number; source_id: string }>();
+  const referencesList: Array<{ index: number; title: string; db_id: number; source_id: string }> = [];
+  let referenceIndex = 0;
+
+  // Regex to find citations like [xxxx.yyyyy], [xxxx.yyyyyvN], or [DB_ID_as_string]
+  const citationRegex = /\[([^\]]+?)\]/g;
+
+  const transformedSummaryText = summary.replace(citationRegex, (match, citedIdentifier) => {
+    const trimmedIdentifier = citedIdentifier.trim();
+    
+    if (referencesMap.has(trimmedIdentifier)) {
+      return `[${referencesMap.get(trimmedIdentifier)!.index}]`;
+    }
+
+    // Attempt to find the paper in processedPapers by source_id (e.g., arXiv ID) or db_id
+    const paper = processedPapers.value.find(p => 
+        p.paper_id === trimmedIdentifier || 
+        p.db_id.toString() === trimmedIdentifier
+    );
+
+    if (paper) {
+      referenceIndex++;
+      const refData = {
+        index: referenceIndex,
+        title: paper.title,
+        db_id: paper.db_id,
+        source_id: paper.paper_id || paper.db_id.toString(), // Store the identifier that was matched or db_id as fallback
+      };
+      referencesMap.set(trimmedIdentifier, refData); // Use the original identifier as key
+      referencesList.push(refData);
+      return `[${referenceIndex}]`;
+    } else {
+      // If paper not found in current results, keep original citation
+      // console.warn(`Cited paper with identifier "${trimmedIdentifier}" not found in processedPapers.`);
+      return match; 
+    }
+  });
+
+  return {
+    summaryText: transformedSummaryText,
+    references: referencesList.sort((a, b) => a.index - b.index), // Ensure sorted by appearance
+  };
+});
+
+const handleReferenceClick = (paperDbId: number) => {
+  const paperElement = document.getElementById(`paper-item-${paperDbId}`);
+  if (paperElement) {
+    paperElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Optional: Add a temporary highlight effect
+    paperElement.classList.add('highlight-flash');
+    setTimeout(() => {
+      paperElement.classList.remove('highlight-flash');
+    }, 1500);
+  } else {
+    console.warn(`Paper element with ID paper-item-${paperDbId} not found for scrolling.`);
+  }
+};
+
 
 const fetchAndUpdatePaperStatus = async (paperDbId: number) => {
   try {
@@ -303,6 +382,13 @@ watch(selectedPapersForChat, (newSelection) => {
 </script>
 
 <style scoped>
+.whitespace-pre-line {
+  white-space: pre-line;
+}
+.highlight-flash {
+  transition: background-color 0.2s ease-in-out;
+  background-color: #e0e7ff; /* Tailwind's indigo-100 */
+}
 .whitespace-pre-line {
   white-space: pre-line;
 }

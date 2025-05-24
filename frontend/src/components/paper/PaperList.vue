@@ -7,13 +7,19 @@
       <p class="mt-4 text-lg text-gray-500">No papers to display.</p>
       <p class="text-sm text-gray-400">Try refining your search query.</p>
     </div>
-    <PaperItem
-      v-for="paper in papers"
+    <div 
+      v-for="paper in papers" 
       :key="paper.db_id"
-      :paper="paper"
-      @update-paper-selection="handlePaperSelectionUpdate" 
-    />
+      :id="`paper-item-${paper.db_id}`"
+      class="p-5 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+      :class="{ 'border-l-4 border-indigo-500': paper.is_selected_for_chat }"
+      >
+      <PaperItem
+        :paper="paper"
+        @update-paper-selection="handlePaperSelectionUpdate" 
+      />
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
