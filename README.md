@@ -1,4 +1,5 @@
-# Lexify Research Assistant
+# Lexify
+**AI Research Assistant**
 
 An AI-powered research assistant that helps users discover, analyze, and interact with academic papers through intelligent search, summarization, and conversational AI using RAG (Retrieval-Augmented Generation) technology.
 
