@@ -15,6 +15,19 @@ Lexify transforms academic research by allowing users to:
 3. **Chat & Analyze** with multiple papers simultaneously using conversational AI
 4. **Save & Resume** research sessions across multiple visits
 
+## 🎥 Demo Video
+
+See Lexify in action! Watch the comprehensive demo showcasing the complete research workflow:
+
+<div align="center">
+  <video width="100%" controls>
+    <source src="./lexify_comp.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+</div>
+
+*The demo covers: paper search, AI summarization, paper selection, background processing, and interactive chat with citations.*
+
 ## 🔄 Research Workflow
 
 ```
