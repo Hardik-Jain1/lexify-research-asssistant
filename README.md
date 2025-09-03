@@ -19,12 +19,7 @@ Lexify transforms academic research by allowing users to:
 
 See Lexify in action! Watch the comprehensive demo showcasing the complete research workflow:
 
-<div align="center">
-  <video width="100%" controls>
-    <source src="./lexify_comp.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-</div>
+https://github.com/user-attachments/assets/4df35784-6bc4-4c83-beb4-1f24867e8fd4
 
 *The demo covers: paper search, AI summarization, paper selection, background processing, and interactive chat with citations.*
 
