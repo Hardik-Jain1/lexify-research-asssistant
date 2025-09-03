@@ -59,7 +59,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
 import PaperItem from './PaperItem.vue';
 import type { Paper } from '@/types';
 

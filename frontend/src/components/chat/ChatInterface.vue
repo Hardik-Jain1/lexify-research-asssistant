@@ -147,11 +147,11 @@
 
 <script setup lang="ts">
 // ... existing script setup ...
-import { ref, watch, nextTick, defineProps, defineEmits, onMounted, computed } from 'vue';
+import { ref, watch, nextTick, onMounted, computed } from 'vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import * as ragService from '@/services/ragService';
-import type { ChatMessage, Paper, Source } from '@/types';
+import type { ChatMessage, Paper, ChatMessageSource } from '@/types';
 
 console.log('ChatInterface: script setup started');
 
@@ -221,7 +221,7 @@ const renderMarkdown = (content: string) => {
   });
 };
 
-const handleSourceClick = (source: Source, key: string) => {
+const handleSourceClick = (source: ChatMessageSource, key: string) => {
     console.log('Source clicked:', source.title || key, source);
     emit('source-clicked', { title: source.title || key, text: source.text, rawSource: source });
 };

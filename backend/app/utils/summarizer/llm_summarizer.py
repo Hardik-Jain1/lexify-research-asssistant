@@ -23,7 +23,7 @@ def summarize_arxiv_papers(
     arxiv_results,
     config, # Pass Flask app.config or a relevant dict
     llm_completion_func, # Pass the completion function
-    max_tokens_per_summary=150, # Renamed for clarity
+    max_tokens_per_summary=1024, # Renamed for clarity
     temperature=0.0,
     top_p=0.5,
 ):
@@ -55,6 +55,9 @@ def summarize_arxiv_papers(
                 temperature=temperature,
                 top_p=top_p,
             )
+
+            # print("\nLLM Response for paper_id", paper_id, ":\n", response, "\n\n")
+
             # ... (rest of your response parsing logic remains the same)
             if hasattr(response, "choices"):
                 summary = response.choices[0].message.content
@@ -98,7 +101,7 @@ def synthesize_insights_from_summaries(
     query,
     config, # Pass Flask app.config or a relevant dict
     llm_completion_func, # Pass the completion function
-    max_tokens_synthesis=300, # Renamed for clarity
+    max_tokens_synthesis=4096, # Renamed for clarity
     temperature=0.0,
     top_p=0.5,
 ):

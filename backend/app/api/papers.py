@@ -270,6 +270,7 @@ from app.core.download_service import DownloadService
 from app.core.processing_service import ProcessingService
 from app.core.rag_service import RAGService # For indexing
 import datetime
+from pathlib import Path
 import threading # For simple background tasks, consider Celery for production
 
 papers_bp = Blueprint('papers_bp', __name__)
@@ -397,8 +398,12 @@ def search_and_summarize_papers():
         # These are quick summaries from abstracts, not full text
         individual_summaries = SummarizerService.generate_individual_summaries(papers_for_summary)
 
+        # print("\nIndividual Summaries: \n", individual_summaries, "\n\n")
+
         # 3. Generate Consolidated Summary (from individual summaries)
         consolidated_summary_data = SummarizerService.generate_consolidated_summary(individual_summaries, query)
+
+        # print("\nConsolidated Summary Data: \n", consolidated_summary_data, "\n\n")
 
         # 4. Asynchronously download, extract text, clean, and index papers
         # Create a copy of the app context for the new thread
