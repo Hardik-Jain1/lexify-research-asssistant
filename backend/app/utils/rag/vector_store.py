@@ -1,11 +1,10 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance
-
 from dotenv import load_dotenv
-load_dotenv()
 import os
 
-# qdrant = QdrantClient(path="/qdrant_collections")
+load_dotenv()
+
 qdrant = QdrantClient(
     url=os.getenv("QDRANT_URL"),
     api_key=os.getenv("QDRANT_API_KEY")

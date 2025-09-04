@@ -1,4 +1,3 @@
-# app/models/chat.py
 from app.extensions import db
 import datetime
 
@@ -7,7 +6,7 @@ class ChatSession(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    session_name = db.Column(db.String(200), nullable=True, default=lambda: f"Chat Session - {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')}") # Optional name
+    session_name = db.Column(db.String(200), nullable=True, default=lambda: f"Chat Session - {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')}")
     created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
 
@@ -27,12 +26,8 @@ class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('chat_sessions.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
-    role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
+    role = db.Column(db.String(20), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    
-    # Optional: Store context or sources used for assistant's response
-    # sources_json = db.Column(db.JSON, nullable=True) # Store the 'sources' dict from chat_with_papers
-    # token_usage_json = db.Column(db.JSON, nullable=True) # Store token usage
 
     session = db.relationship('ChatSession', back_populates='messages')
 
@@ -46,6 +41,4 @@ class ChatMessage(db.Model):
             "timestamp": self.timestamp.isoformat(),
             "role": self.role,
             "content": self.content
-            # "sources": self.sources_json if self.sources_json else None,
-            # "token_usage": self.token_usage_json if self.token_usage_json else None
         }

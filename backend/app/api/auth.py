@@ -1,13 +1,11 @@
-# app/api/auth.py
 from flask import request, jsonify, current_app
 from flask.views import MethodView
 from app.extensions import db
 from app.models.user import User
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, create_refresh_token, set_access_cookies, set_refresh_cookies
 import datetime
-
-# Use a Blueprint for auth routes
 from flask import Blueprint
+
 auth_bp = Blueprint('auth_bp', __name__)
 
 class RegisterAPI(MethodView):
@@ -22,7 +20,7 @@ class RegisterAPI(MethodView):
 
         if User.query.filter_by(username=username).first() or \
            User.query.filter_by(email=email).first():
-            return jsonify({"msg": "User already exists"}), 409 # 409 Conflict
+            return jsonify({"msg": "User already exists"}), 409
 
         user = User(username=username, email=email)
         user.set_password(password)
@@ -44,7 +42,7 @@ class LoginAPI(MethodView):
 
         if user and user.check_password(password):
             access_token = create_access_token(identity=str(user.id))
-            refresh_token = create_refresh_token(identity=str(user.id)) # If using refresh tokens
+            refresh_token = create_refresh_token(identity=str(user.id))
 
             response = jsonify({
                         "msg": "Login successful",
@@ -65,16 +63,8 @@ class LoginAPI(MethodView):
         else:
             return jsonify({"msg": "Bad username or password"}), 401
 
-# If you implement refresh tokens:
-# class TokenRefreshAPI(MethodView):
-#     @jwt_required(refresh=True)
-#     def post(self):
-#         current_user_id = get_jwt_identity()
-#         new_access_token = create_access_token(identity=current_user_id)
-#         return jsonify(access_token=new_access_token), 200
-
 class ProtectedAPI(MethodView):
-    """ Example of a protected route """
+    """Example of a protected route"""
     decorators = [jwt_required()]
 
     def get(self):
@@ -85,24 +75,14 @@ class ProtectedAPI(MethodView):
         return jsonify(logged_in_as=user.username, user_id=user.id), 200
 
 class LogoutAPI(MethodView):
-    decorators = [jwt_required()] # User must be logged in to log out
+    decorators = [jwt_required()]
 
     def post(self):
-        # For a simple logout, the server doesn't do much beyond acknowledging.
-        # The client is responsible for discarding the JWT.
-        # If implementing a token blocklist (denylist), you would add the token's JTI here.
         current_user_id = int(get_jwt_identity())
-        # current_app.logger.info(f"User {current_user_id} logged out.") # Example log
-
         return jsonify({"msg": "Logout successful. Please discard your token."}), 200
 
-# Registering the views with the blueprint
+# Register endpoints
 auth_bp.add_url_rule('/register', view_func=RegisterAPI.as_view('register_api'), methods=['POST'])
 auth_bp.add_url_rule('/login', view_func=LoginAPI.as_view('login_api'), methods=['POST'])
-auth_bp.add_url_rule('/logout', view_func=LogoutAPI.as_view('logout_api'), methods=['POST']) # Add this line
-# auth_bp.add_url_rule('/refresh', view_func=TokenRefreshAPI.as_view('refresh_api'), methods=['POST'])
+auth_bp.add_url_rule('/logout', view_func=LogoutAPI.as_view('logout_api'), methods=['POST'])
 auth_bp.add_url_rule('/protected', view_func=ProtectedAPI.as_view('protected_api'), methods=['GET'])
-
-# You might also want a /logout endpoint, which for JWT typically involves
-# client-side token deletion and possibly server-side token blocklisting if using refresh tokens.
-# For simplicity, we'll skip blocklisting for now.

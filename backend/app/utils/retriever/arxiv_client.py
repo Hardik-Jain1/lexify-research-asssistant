@@ -21,7 +21,6 @@ def search_arxiv(query: str, max_results: int = 5) -> List[Dict]:
             "entry_id": result.entry_id,
             "source": "arXiv",
             "abstract": result.summary,
-            # "obj": result,
         })
         pdf_urls.append({"pdf_url": result.pdf_url})
 

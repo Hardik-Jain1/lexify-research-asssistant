@@ -1,29 +1,20 @@
-# app/core/download_service.py
 from flask import current_app
 from pathlib import Path
-# Assuming retriever.download_papers is accessible
 from app.utils.retriever.download_papers import download_pdfs as download_pdfs_external
 
 class DownloadService:
     @staticmethod
-    def download_paper_pdfs(pdf_urls: list[dict]) -> list[str]: # Returns list of successfully saved file paths
-        """
-        Downloads PDFs and returns a list of local file paths for successfully downloaded files.
-        pdf_urls: list of dicts, each like {"pdf_url": "...", "paper_id": "..."} (paper_id for naming)
-        """
+    def download_paper_pdfs(pdf_urls: list[dict]) -> list[str]:
+        """Downloads PDFs and returns a list of local file paths for successfully downloaded files."""
         save_dir = Path(current_app.config['PAPER_SAVE_DIR'])
         save_dir.mkdir(parents=True, exist_ok=True)
         
         successfully_downloaded_paths = []
-
-        # Modify download_pdfs_external to accept save_dir and return paths, or wrap its logic here
-        # For now, let's adapt the logic from your download_papers.py directly for better control
-        
-        import requests # Add to requirements if not already there implicitly
+        import requests
 
         for item in pdf_urls:
             url = item.get("pdf_url")
-            paper_id = item.get("paper_id") # Expect paper_id for consistent naming
+            paper_id = item.get("paper_id")
 
             if not url or not paper_id:
                 current_app.logger.warning(f"Missing pdf_url or paper_id in item: {item}. Skipping download.")
@@ -31,7 +22,7 @@ class DownloadService:
 
             # Sanitize paper_id for use as a filename
             safe_paper_id = paper_id.replace('/', '_').replace(':', '_')
-            file_name = f"{safe_paper_id}.pdf" # Use paper_id for unique naming
+            file_name = f"{safe_paper_id}.pdf"
             file_path = save_dir / file_name
 
             if file_path.exists():
@@ -41,8 +32,8 @@ class DownloadService:
 
             current_app.logger.info(f"Downloading {file_name} from {url}...")
             try:
-                response = requests.get(url, timeout=30) # Added timeout
-                response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+                response = requests.get(url, timeout=30)
+                response.raise_for_status()
                 
                 with open(file_path, "wb") as f:
                     f.write(response.content)
